@@ -1,14 +1,15 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+pub(crate) const DEVICE_VID: u16 = 0x6942;
+pub(crate) const DEVICE_PID: u16 = 0x6942;
+
+pub(crate) struct UsbInternals<'usb> {
+    context: rusb::Context,
+    device_handle: rusb::DeviceHandle<rusb::Context>,
+    interface: rusb::Interface<'usb>,
+    interface_descriptor: rusb::InterfaceDescriptor<'usb>,
+    read_endpoint: rusb::EndpointDescriptor<'usb>,
+    write_endpoint: rusb::EndpointDescriptor<'usb>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub struct LEDragonContext<'usb> {
+    internal: UsbInternals<'usb>,
 }

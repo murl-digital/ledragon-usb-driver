@@ -2,8 +2,8 @@ use core::str;
 use std::{
     fs::File,
     io::{BufReader, Read},
-    task,
-    time::Duration,
+    task, thread,
+    time::{Duration, Instant},
 };
 
 use rusb::{Context, Direction, UsbContext};
@@ -21,6 +21,7 @@ fn main() {
         })
         .map(|d| d.open().unwrap())
         .unwrap();
+    device.reset().unwrap();
 
     let config_desc = device.device().config_descriptor(0).unwrap();
     let interface = config_desc.interfaces().next().unwrap();
@@ -51,27 +52,29 @@ fn main() {
         .set_alternate_setting(interface.number(), interface_descriptors.setting_number())
         .unwrap();
 
-    for i in 0..5 {
-        println!("{i}");
-        device
-            .write_bulk(endpoint.address(), &[1, 2, 3, 4], Duration::from_millis(0))
+    let file = BufReader::new(File::open("/home/draconium/Downloads/5mb.txt").unwrap());
+    let bytes = file.bytes().collect::<Result<Vec<_>, _>>().unwrap();
+    println!("{}", bytes.len());
+
+    for chunk in bytes.as_slice().chunks(1024) {
+        let now = Instant::now();
+        let write_amt = device
+            .write_bulk(endpoint.address(), chunk, Duration::from_millis(0))
             .unwrap();
+        //println!("{:?}", now.elapsed());
         let mut data = [0; 64];
         let mut read_amt = 0;
 
-        match device.read_interrupt(
-            read_endpoint.address(),
-            &mut data,
-            Duration::from_millis(150),
-        ) {
-            Ok(amt) => read_amt = amt,
-            Err(rusb::Error::Timeout) => {
-                println!("timed out");
-                continue;
-            }
-            Err(e) => panic!("{e}"),
-        }
+        // match device.read_bulk(read_endpoint.address(), &mut data, Duration::from_millis(0)) {
+        //     Ok(amt) => read_amt = amt,
+        //     Err(rusb::Error::Timeout) => {
+        //         println!("timed out");
+        //         continue;
+        //     }
+        //     Err(e) => panic!("{e}"),
+        // }
 
-        println!("{:?}", str::from_utf8(&data[..read_amt]));
+        //println!("{write_amt}");
+        //println!("{:?}", str::from_utf8(&data[..read_amt]));
     }
 }
